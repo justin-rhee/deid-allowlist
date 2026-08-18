@@ -1,0 +1,21 @@
+{
+  "authoredForVersion": "deid-v1.0.0",
+  "cases": [
+    {
+      "id": "support-ticket-misconfigured-allowlist",
+      "_comment": "regression fixture: summary is allowlisted as pass instead of tokenize, so the tokenizer never runs on it. This case exists to prove the runner actually reports red when the allowlist is wrong, not just when it is right.",
+      "allowlist": {
+        "ticketId": "pass",
+        "status": "pass",
+        "summary": "pass"
+      },
+      "raw": {
+        "ticketId": "T-2001",
+        "status": "open",
+        "summary": "Escalated by Jordan Lee at jordan.lee@example.com"
+      },
+      "mustNotLeak": ["Jordan Lee", "jordan.lee@example.com"],
+      "mustPreserveMeaning": ["Escalated by"]
+    }
+  ]
+}

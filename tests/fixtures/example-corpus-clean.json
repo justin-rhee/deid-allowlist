@@ -1,0 +1,47 @@
+{
+  "authoredForVersion": "deid-v1.0.0",
+  "cases": [
+    {
+      "id": "support-ticket-basic",
+      "allowlist": {
+        "ticketId": "pass",
+        "status": "pass",
+        "priority": "pass",
+        "summary": "tokenize"
+      },
+      "raw": {
+        "ticketId": "T-1042",
+        "status": "open",
+        "priority": "high",
+        "summary": "Escalated by Jordan Lee at jordan.lee@example.com re: invoice renewal, call +1 (415) 555-0199",
+        "internalNotes": "Jordan Lee's account flagged for manual review, see https://internal.example.com/acct/9981"
+      },
+      "mustNotLeak": [
+        "Jordan Lee",
+        "jordan.lee@example.com",
+        "555-0199",
+        "internal.example.com/acct/9981",
+        "flagged for manual review"
+      ],
+      "mustPreserveMeaning": ["Escalated by", "invoice renewal"]
+    },
+    {
+      "id": "support-ticket-second-mention",
+      "allowlist": {
+        "ticketId": "pass",
+        "status": "pass",
+        "priority": "pass",
+        "summary": "tokenize"
+      },
+      "raw": {
+        "ticketId": "T-1055",
+        "status": "pending",
+        "priority": "low",
+        "summary": "Jordan Lee called back about the same invoice renewal",
+        "internalNotes": "duplicate of T-1042, same customer Jordan Lee"
+      },
+      "mustNotLeak": ["Jordan Lee", "duplicate of T-1042"],
+      "mustPreserveMeaning": ["called back about the same", "invoice renewal"]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "deid-allowlist",
+  "version": "1.0.0",
+  "description": "Drops every field you did not explicitly allow, before a record leaves your machine",
+  "type": "module",
+  "license": "MIT",
+  "author": "Justin Rhee",
+  "repository": { "type": "git", "url": "https://github.com/justin-rhee/deid-allowlist.git" },
+  "engines": { "node": ">=22" },
+  "exports": { ".": "./src/deid.ts" },
+  "files": ["src", "README.md", "LICENSE", "SECURITY.md"],
+  "scripts": { "test": "bash tests/run.sh" }
+}
