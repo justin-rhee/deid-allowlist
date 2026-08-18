@@ -71,9 +71,9 @@ The command line entry point is tested as a real child process against real file
 
 ## Install
 
-Node with native TypeScript support, or add a transpile step. No dependencies, no network, and the core reads nothing from disk.
+Copy all three files out of `src/` and keep them together: `src/deid.ts` is the pipeline, `src/verify.ts` holds the check, and `src/runVerify.ts` is the command line entry point. They import each other, so taking one alone will not work. Node with native TypeScript support, or add a transpile step. No dependencies, no network, and the core reads nothing from disk.
 
-Define an allowlist per surface, run your records through `applyAllowlist`, and wire `runVerify` into whatever gates your sync. Point it at a corpus of your own planted identifiers, because a corpus of mine proves nothing about your data.
+Define an allowlist per surface, run your records through `applyAllowlist`, and wire `runVerify` into whatever gates your sync. Point it at a set of your own planted identifiers, because mine prove nothing about your data.
 
 Confirm it's doing something before you trust it. Take a record, remove a field from the allowlist, and check that the field disappears from the output. If it survives, the allowlist isn't on the path.
 
