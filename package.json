@@ -5,9 +5,23 @@
   "type": "module",
   "license": "MIT",
   "author": "Justin Rhee",
-  "repository": { "type": "git", "url": "https://github.com/justin-rhee/deid-allowlist.git" },
-  "engines": { "node": ">=22" },
-  "exports": { ".": "./src/deid.ts" },
-  "files": ["src", "README.md", "LICENSE", "SECURITY.md"],
-  "scripts": { "test": "bash tests/run.sh" }
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/justin-rhee/deid-allowlist.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/deid.ts"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.ts"
+  }
 }
