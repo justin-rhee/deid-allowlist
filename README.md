@@ -1,11 +1,11 @@
 # deid-allowlist
 
-[![tests](https://github.com/justin-rhee/deid-allowlist/actions/workflows/test.yml/badge.svg)](https://github.com/justin-rhee/deid-allowlist/actions/workflows/test.yml) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg) ![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)
+[![tests](https://github.com/justin-rhee/deid-allowlist/actions/workflows/test.yml/badge.svg)](https://github.com/justin-rhee/deid-allowlist/actions/workflows/test.yml) [![npm](https://img.shields.io/npm/v/deid-allowlist.svg)](https://www.npmjs.com/package/deid-allowlist) [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) ![node >= 22](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg) ![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)
 
 Strips every field you didn't explicitly allow from records before they sync off your machine, including fields added later.
 
 ```ts
-import { applyAllowlist } from "./deid.ts";
+import { applyAllowlist } from "deid-allowlist";
 
 const record = { id: "T-1042", status: "open", body: "Maria Lopez asked about her refund",
                  email: "maria@example.com", added_later: "x" };
@@ -24,7 +24,11 @@ I was syncing a few thousand personal records to a cloud backend, protected by a
 
 ## Install
 
-Copy all three files from `src/` and keep them together, since they import each other: `deid.ts` is the pipeline, `verify.ts` the check, `runVerify.ts` the command line entry. About 400 lines, no dependencies, under Node 22 or newer, which reads TypeScript directly. Then check it's on the path: remove a field from an allowlist and confirm it disappears from the output.
+```sh
+npm install deid-allowlist
+```
+
+Node 22 or newer. No dependencies. It ships compiled JavaScript with type definitions. Rather vendor it? Copy `src/deid.ts` into your project instead: about 210 lines, and Node 22 reads TypeScript directly.
 
 ## How it works
 

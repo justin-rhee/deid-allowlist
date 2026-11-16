@@ -1,27 +1,40 @@
 {
   "name": "deid-allowlist",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Drops every field you did not explicitly allow, before a record leaves your machine",
   "type": "module",
-  "license": "MIT",
-  "author": "Justin Rhee",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/justin-rhee/deid-allowlist.git"
-  },
-  "engines": {
-    "node": ">=22"
-  },
+  "main": "./dist/deid.js",
+  "types": "./dist/deid.d.ts",
   "exports": {
-    ".": "./src/deid.ts"
+    ".": {
+      "types": "./dist/deid.d.ts",
+      "import": "./dist/deid.js"
+    }
   },
   "files": [
-    "src",
+    "dist",
     "README.md",
     "LICENSE",
     "SECURITY.md"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "node --test tests/*.test.ts"
+    "test": "node --test tests/*.test.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "author": "Justin Rhee",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justin-rhee/deid-allowlist.git"
+  },
+  "homepage": "https://github.com/justin-rhee/deid-allowlist#readme",
+  "bugs": "https://github.com/justin-rhee/deid-allowlist/issues",
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^22.0.0"
   }
 }
