@@ -1,12 +1,16 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { tokenizeEntities, deidField, applyAllowlist, DEID_VERSION } from "../src/deid.ts";
+
+const KEY = "test-key-0123456789abcdef0123456789abcdef";
+process.env.DEID_ALLOWLIST_KEY = KEY;
 
 test("dates are tokenized (iso, us, month-name)", () => {
   for (const d of ["2026-03-14", "03/14/2026", "March 14 2026", "Mar 14"]) {
     const out = tokenizeEntities(`due ${d} ok`);
     assert.ok(!out.includes(d), `date leaked: ${d} -> ${out}`);
-    assert.match(out, /<DATE_[0-9a-f]{8}>/);
+    assert.match(out, /<DATE_[0-9a-f]{16}>/);
   }
 });
 
@@ -28,8 +32,8 @@ test("multi-word proper nouns tokenized, surrounding meaning preserved", () => {
 test("same entity maps to the same stable token, within and across calls (meaning-preserving)", () => {
   const a = tokenizeEntities("Jordan Lee here");
   const b = tokenizeEntities("and Jordan Lee there");
-  const tokA = a.match(/<NAME_[0-9a-f]{8}>/)?.[0];
-  const tokB = b.match(/<NAME_[0-9a-f]{8}>/)?.[0];
+  const tokA = a.match(/<NAME_[0-9a-f]{16}>/)?.[0];
+  const tokB = b.match(/<NAME_[0-9a-f]{16}>/)?.[0];
   assert.ok(tokA, "first call produced a NAME token");
   assert.equal(tokA, tokB, "the same entity across two independent calls must map to the same token");
 });
@@ -137,4 +141,56 @@ test("KNOWN GAP: lowercase names are not tokenized by the proper-noun heuristic"
 test("KNOWN GAP: a name that is also the first word of the string is not tokenized", () => {
   const out = tokenizeEntities("Smith called about the invoice");
   assert.ok(out.startsWith("Smith "), "sentence-initial single capitalized word is treated as ambiguous, not tokenized");
+});
+
+// -------------------------------------------------------------------------------------------
+// Keyed tokens: a token must not be reversible by hashing guesses without the key.
+// -------------------------------------------------------------------------------------------
+
+test("token is 16 hex chars", () => {
+  const out = tokenizeEntities("call +1 (415) 555-0199 today");
+  assert.match(out, /<PHONE_[0-9a-f]{16}>/);
+});
+
+test("a token cannot be matched by an unkeyed SHA-256 of the guessed value", () => {
+  const out = tokenizeEntities("call +1 (415) 555-0199 today");
+  const tok = out.match(/<PHONE_([0-9a-f]{16})>/)![1]!;
+  const unkeyed = createHash("sha256").update("PHONE 14155550199").digest("hex");
+  assert.ok(!unkeyed.startsWith(tok.slice(0, 8)), "token must not equal the unkeyed hash prefix");
+  assert.notEqual(unkeyed.slice(0, 16), tok);
+});
+
+test("the same key gives stable tokens; a different key gives different tokens", () => {
+  const a1 = tokenizeEntities("Jordan Lee here", { key: KEY });
+  const a2 = tokenizeEntities("Jordan Lee here", { key: KEY });
+  const b = tokenizeEntities("Jordan Lee here", { key: "another-key-0123456789abcdef0123456789abcdef" });
+  assert.equal(a1, a2);
+  assert.notEqual(a1, b);
+});
+
+test("ctx.key overrides the environment variable", () => {
+  const viaEnv = tokenizeEntities("Jordan Lee here");
+  const viaCtx = tokenizeEntities("Jordan Lee here", { key: "another-key-0123456789abcdef0123456789abcdef" });
+  assert.notEqual(viaEnv, viaCtx);
+  assert.equal(tokenizeEntities("Jordan Lee here", { key: KEY }), viaEnv);
+});
+
+test("a Uint8Array key works and matches the same string key", () => {
+  assert.equal(tokenizeEntities("Jordan Lee here", { key: Buffer.from(KEY) }), tokenizeEntities("Jordan Lee here", { key: KEY }));
+});
+
+test("no key set: tokenizing throws instead of using a default", () => {
+  delete process.env.DEID_ALLOWLIST_KEY;
+  try {
+    assert.throws(() => tokenizeEntities("Jordan Lee here"), /secret key/);
+    assert.throws(() => applyAllowlist({ n: "Jordan Lee" }, { n: "tokenize" }), /secret key/);
+    // pass-only allowlists never need a key
+    assert.deepEqual(applyAllowlist({ id: "x", n: "Jordan Lee" }, { id: "pass" }), { id: "x" });
+  } finally {
+    process.env.DEID_ALLOWLIST_KEY = KEY;
+  }
+});
+
+test("a short key is rejected", () => {
+  assert.throws(() => tokenizeEntities("Jordan Lee here", { key: "short" }), /too short/);
 });

@@ -11,8 +11,10 @@ const record = { id: "T-1042", status: "open", body: "Maria Lopez asked about he
                  email: "maria@example.com", added_later: "x" };
 
 applyAllowlist(record, { id: "pass", status: "pass", body: "tokenize" }, { entityList: ["Maria Lopez"] });
-// { id: "T-1042", status: "open", body: "<NAME_82f373f6> asked about her refund" }
+// { id: "T-1042", status: "open", body: "<NAME_e808e01f3a63d8fa> asked about her refund" }
 ```
+
+Tokens are keyed. Set a secret first, such as `export DEID_ALLOWLIST_KEY=$(openssl rand -hex 32)`, or pass `{ key }` in the third argument. There is no default key: tokenizing throws without one, and your token values will differ from the ones above.
 
 I was syncing a few thousand personal records to a cloud backend, protected by a list of fields to strip. A strip list only covers the fields you thought of. Every field added later, by a schema change or a library that helpfully attaches metadata, sails through silently.
 
@@ -28,12 +30,12 @@ I was syncing a few thousand personal records to a cloud backend, protected by a
 npm install deid-allowlist
 ```
 
-Node 22 or newer. No dependencies. It ships compiled JavaScript with type definitions. Rather vendor it? Copy `src/deid.ts` into your project instead: about 210 lines, and Node 22 reads TypeScript directly.
+Node 22 or newer. No dependencies. It ships compiled JavaScript with type definitions. Rather vendor it? Copy `src/deid.ts` into your project instead: about 215 lines, and Node 22 reads TypeScript directly.
 
 ## How it works
 
 1. each surface's allowlist marks fields as pass or tokenize, and anything not listed is dropped
-2. tokenized names become the same token in every record, derived by hash with no lookup table, so you can tell two records share a person without keeping anything that turns the token back into a name
+2. tokenized names become the same token in every record, an HMAC of the value under your secret key with no lookup table, so you can tell two records share a person. Without the key nobody can test a guess against a token or turn it back into a name. With the key they can confirm a guess, so keep it out of your records and your repo, and rotate it if it leaks, which changes every token
 3. an offline verifier plants fake identifiers in a corpus you define, runs the pipeline, and checks none survive
 4. sync refuses to run unless that check is green, matches the current pipeline version, and is under seven days old
 
@@ -56,7 +58,7 @@ It ships no schema validation, one worked example rather than a library of surfa
 
 ## How I tested it
 
-- 24 tests and a strict typecheck: `node --test tests/*.test.ts`
+- 34 tests and a strict typecheck: `node --test tests/*.test.ts`
 - the same planted record runs with each protection on and off: bypassing the allowlist, passing a field that should be tokenized, weakening the verifier's own allowlist
 - every protection-off run leaks the complete planted set and every protection-on run leaks none, so no test can pass by accident
 

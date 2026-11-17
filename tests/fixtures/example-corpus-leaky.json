@@ -1,5 +1,5 @@
 {
-  "authoredForVersion": "deid-v1.0.0",
+  "authoredForVersion": "deid-v2.0.0",
   "cases": [
     {
       "id": "support-ticket-misconfigured-allowlist",

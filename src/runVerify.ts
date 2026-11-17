@@ -4,7 +4,9 @@
  * Runs the full de-id pipeline against a planted-identifier corpus with no network and no
  * database — the check works standalone, before anything real ever syncs:
  *
- *   node src/runVerify.ts <corpus.json> [result.json] [halt.flag]
+ *   DEID_ALLOWLIST_KEY=<secret, 32+ chars> node src/runVerify.ts <corpus.json> [result.json] [halt.flag]
+ *
+ * Tokens are keyed, so the key must be in the environment; a missing or short key is exit 2.
  *
  * Loads the corpus, calls verifyCorpus() (pure, see verify.ts), optionally writes the full
  * result to <result.json>, and optionally writes/clears a halt-flag file at <halt.flag> — present
@@ -58,7 +60,13 @@ function main(): void {
     process.exit(2);
   }
 
-  const result = verifyCorpus(corpus);
+  let result: ReturnType<typeof verifyCorpus>;
+  try {
+    result = verifyCorpus(corpus);
+  } catch (err) {
+    process.stderr.write(`could not run verification: ${(err as Error).message}\n`);
+    process.exit(2);
+  }
   const ranAt = Date.now();
 
   if (resultPath) {
