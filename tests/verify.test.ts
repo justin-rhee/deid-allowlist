@@ -4,6 +4,8 @@ import { verifyCorpus, verifyGateOpen } from "../src/verify.ts";
 import type { Corpus } from "../src/verify.ts";
 import { DEID_VERSION } from "../src/deid.ts";
 
+process.env.DEID_ALLOWLIST_KEY = "test-key-0123456789abcdef0123456789abcdef";
+
 test("verifyCorpus: a correctly-allowlisted corpus is green with zero leaks", () => {
   const corpus: Corpus = {
     cases: [
@@ -46,8 +48,8 @@ test("stable tokens survive the full applyAllowlist path identically across two 
   const allowlist = { noteDeid: "tokenize" } as const;
   const out1 = applyAllowlist({ noteDeid: "Jordan Lee called" }, allowlist);
   const out2 = applyAllowlist({ noteDeid: "following up with Jordan Lee again" }, allowlist);
-  const tok1 = String(out1.noteDeid).match(/<NAME_[0-9a-f]{8}>/)?.[0];
-  const tok2 = String(out2.noteDeid).match(/<NAME_[0-9a-f]{8}>/)?.[0];
+  const tok1 = String(out1.noteDeid).match(/<NAME_[0-9a-f]{16}>/)?.[0];
+  const tok2 = String(out2.noteDeid).match(/<NAME_[0-9a-f]{16}>/)?.[0];
   assert.ok(tok1, "first record produced a token");
   assert.equal(tok1, tok2, "the same entity in two different records must produce the identical token, with no shared state");
 });

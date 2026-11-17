@@ -17,8 +17,10 @@ const SCRIPT = resolve(import.meta.dirname, "..", "src", "runVerify.ts");
 const CLEAN_CORPUS = resolve(import.meta.dirname, "fixtures", "example-corpus-clean.json");
 const LEAKY_CORPUS = resolve(import.meta.dirname, "fixtures", "example-corpus-leaky.json");
 
+const KEY = "test-key-0123456789abcdef0123456789abcdef";
+
 function run(args: string[]) {
-  return spawnSync(process.execPath, [SCRIPT, ...args], { encoding: "utf8" });
+  return spawnSync(process.execPath, [SCRIPT, ...args], { encoding: "utf8", env: { ...process.env, DEID_ALLOWLIST_KEY: KEY } });
 }
 
 test("script run against a clean corpus: exit 0, prints GREEN, writes result file, no halt flag", () => {
@@ -77,11 +79,22 @@ test("script run THROUGH A SYMLINK still executes and reports correctly (guards 
   symlinkSync(SCRIPT, linkPath);
 
   const resultPath = join(dir, "result.json");
-  const proc = spawnSync(process.execPath, [linkPath, CLEAN_CORPUS, resultPath], { encoding: "utf8" });
+  const proc = spawnSync(process.execPath, [linkPath, CLEAN_CORPUS, resultPath], {
+    encoding: "utf8",
+    env: { ...process.env, DEID_ALLOWLIST_KEY: KEY },
+  });
 
   assert.equal(proc.status, 0, `symlink invocation must still run and exit 0; got ${proc.status}, stderr=${proc.stderr}`);
   assert.match(proc.stdout, /GREEN/, "symlink invocation must still print output, not silently no-op");
   assert.ok(existsSync(resultPath), "symlink invocation must still write the result file");
 
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("script run with no key set: exit 2 with a clear message, not a red verdict", () => {
+  const env = { ...process.env };
+  delete env.DEID_ALLOWLIST_KEY;
+  const proc = spawnSync(process.execPath, [SCRIPT, CLEAN_CORPUS], { encoding: "utf8", env });
+  assert.equal(proc.status, 2);
+  assert.match(proc.stderr, /secret key/);
 });

@@ -5,7 +5,7 @@
 deid-allowlist is provided as-is, with NO WARRANTY (see LICENSE). Use it as one
 control among several, never as a sole guarantee.
 
-If this is a security-oriented tool, the honest ceiling applies: it **reduces,
+This is a security-oriented tool, so the honest ceiling applies: it **reduces,
 does not eliminate**, the risk it addresses. Behavioral rules are defense-in-depth
 on top of a structural limit, and the structural limit only holds if the host
 environment actually enforces it (e.g. actually withholds the tools/permissions
@@ -14,10 +14,7 @@ promise the code can't keep.
 
 ## Validation status
 
-<State plainly whether this tool's tests / red-team corpus have been RUN, and
-link the results. An unrun corpus is disclosed here, in the open. never hidden
-behind a "tested" claim. Disclosure does not transfer the duty; run it before
-you rely on it.>
+I ran the offline test suite: all 34 tests pass, with `npm test` (`node --test tests/*.test.ts`), plus a strict typecheck with `npx tsc --noEmit -p tsconfig.build.json`. The tests cover the allowlist drop, the tokenizer and its documented misses, keyed tokens, the verifier, the command line entry, and importing the built package. They do not cover real-world data, other languages or name formats, a leaked or weak key, or any legal or regulatory standard. The planted-identifier corpus is small and written by me.
 
 ## Reporting a vulnerability
 

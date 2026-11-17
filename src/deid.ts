@@ -19,17 +19,20 @@
  * guarantee, because a field the tokenizer misses inside a "tokenize" field is still a narrower
  * failure than a field that should never have been synced at all.
  *
- * Stable tokens: the SAME source entity always maps to the SAME token (a truncated SHA-256 of its
- * type + normalized text), so relationships between records survive de-identification with no
- * stored mapping table and no state carried between calls.
+ * Stable tokens: the SAME source entity under the SAME key always maps to the SAME token (a
+ * truncated HMAC-SHA256 of its type + normalized text), so relationships between records survive
+ * de-identification with no stored mapping table and no state carried between calls. The key is
+ * secret and caller-supplied (ctx.key, or the DEID_ALLOWLIST_KEY environment variable); there is
+ * no default. Without the key a token cannot be tested against guessed values, and a different
+ * key gives different tokens.
  *
- * PURE: deterministic, no fs/network. Uses node:crypto hashing only.
+ * Deterministic: no fs/network. Uses node:crypto HMAC only, and reads one environment variable.
  */
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 
 /** Bump on any change to tokenization or field-handling behavior. A verifier result stamped with
  *  an older version should be treated as stale — see verify.ts's freshness/version gate. */
-export const DEID_VERSION = "deid-v1.0.0";
+export const DEID_VERSION = "deid-v2.0.0";
 
 export type FieldMode = "pass" | "tokenize" | "drop";
 
@@ -42,13 +45,42 @@ export type SurfaceAllowlist = Record<string, FieldMode>;
  *  module never reads it from disk or stores it. When present, exact word-boundary matches are
  *  tokenized first, before the general heuristic pass. Empty by default; the mechanical and
  *  heuristic passes still run without it. */
-export type DeidContext = { entityList?: readonly string[] };
+export type DeidContext = {
+  entityList?: readonly string[];
+  /** Secret key for token HMACs, at least 32 characters (or bytes). Falls back to the
+   *  DEID_ALLOWLIST_KEY environment variable. There is no default: with neither set,
+   *  tokenizing throws. Keep it out of the records and out of version control. */
+  key?: string | Uint8Array;
+};
+
+export const KEY_ENV_VAR = "DEID_ALLOWLIST_KEY";
+export const MIN_KEY_LENGTH = 32;
+const TOKEN_HEX_LENGTH = 16;
+
+function resolveKey(ctx: DeidContext): string | Uint8Array {
+  const key = ctx.key ?? process.env[KEY_ENV_VAR];
+  if (key === undefined || key.length === 0) {
+    throw new Error(
+      `deid-allowlist needs a secret key to make tokens: pass { key } or set ${KEY_ENV_VAR} (e.g. openssl rand -hex 32)`,
+    );
+  }
+  if (key.length < MIN_KEY_LENGTH) {
+    throw new Error(`deid-allowlist key is too short: use at least ${MIN_KEY_LENGTH} characters (e.g. openssl rand -hex 32)`);
+  }
+  return key;
+}
 
 // ---------------------------------------------------------------------------------------------
-// Stable tokenization: entity -> <TYPE_xxxxxxxx>. Deterministic (hash-based), meaning-preserving.
+// Stable tokenization: entity -> <TYPE_xxxxxxxxxxxxxxxx>. Deterministic (keyed HMAC), meaning-preserving.
 // ---------------------------------------------------------------------------------------------
-function stableToken(type: string, normalized: string): string {
-  const h = createHash("sha256").update(`${type} ${normalized}`).digest("hex").slice(0, 8);
+type Tok = (type: string, normalized: string) => string;
+
+function makeToken(key: string | Uint8Array): Tok {
+  return (type, normalized) => stableToken(key, type, normalized);
+}
+
+function stableToken(key: string | Uint8Array, type: string, normalized: string): string {
+  const h = createHmac("sha256", key).update(`${type} ${normalized}`).digest("hex").slice(0, TOKEN_HEX_LENGTH);
   return `<${type}_${h}>`;
 }
 
@@ -84,7 +116,7 @@ const LEADING_STOPWORDS = new Set<string>([
 const RE_PROPER_SEQ = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b/g;
 const RE_PROPER_SINGLE = /\b([A-Z][a-z]{2,})\b/g;
 
-function tokenizeMechanical(text: string): string {
+function tokenizeMechanical(text: string, stableToken: Tok): string {
   let t = text;
   t = t.replace(RE_URL, (m) => stableToken("URL", m.toLowerCase()));
   t = t.replace(RE_EMAIL, (m) => stableToken("EMAIL", m.toLowerCase()));
@@ -101,7 +133,7 @@ function tokenizeMechanical(text: string): string {
 
 /** Tokenize a run of capitalized words, but strip leading stopwords (verbs/articles) so they are
  *  preserved and not absorbed into the NAME token. */
-function tokenizeSequence(seq: string): string {
+function tokenizeSequence(seq: string, stableToken: Tok): string {
   const words = seq.split(/\s+/);
   let lead = 0;
   while (lead < words.length && LEADING_STOPWORDS.has(words[lead]!)) lead++;
@@ -112,8 +144,8 @@ function tokenizeSequence(seq: string): string {
   return kept.length ? `${kept.join(" ")} ${token}` : token;
 }
 
-function tokenizeProperNouns(text: string): string {
-  let t = text.replace(RE_PROPER_SEQ, (m) => tokenizeSequence(m));
+function tokenizeProperNouns(text: string, stableToken: Tok): string {
+  let t = text.replace(RE_PROPER_SEQ, (m) => tokenizeSequence(m, stableToken));
   t = t.replace(RE_PROPER_SINGLE, (m, w: string, offset: number) => {
     if (offset === 0) return m; // sentence-initial lone capital is usually not an identifier
     if (LEADING_STOPWORDS.has(w)) return m;
@@ -122,7 +154,7 @@ function tokenizeProperNouns(text: string): string {
   return t;
 }
 
-function tokenizeEntityList(text: string, entityList: readonly string[]): string {
+function tokenizeEntityList(text: string, entityList: readonly string[], stableToken: Tok): string {
   let t = text;
   for (const raw of entityList) {
     const e = raw.trim();
@@ -141,10 +173,11 @@ function tokenizeEntityList(text: string, entityList: readonly string[]): string
  */
 export function tokenizeEntities(text: string, ctx: DeidContext = {}): string {
   if (typeof text !== "string" || text.length === 0) return text;
+  const tok = makeToken(resolveKey(ctx));
   let t = text;
-  if (ctx.entityList && ctx.entityList.length) t = tokenizeEntityList(t, ctx.entityList);
-  t = tokenizeMechanical(t);
-  t = tokenizeProperNouns(t);
+  if (ctx.entityList && ctx.entityList.length) t = tokenizeEntityList(t, ctx.entityList, tok);
+  t = tokenizeMechanical(t, tok);
+  t = tokenizeProperNouns(t, tok);
   return t;
 }
 

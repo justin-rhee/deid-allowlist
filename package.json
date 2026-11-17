@@ -1,6 +1,6 @@
 {
   "name": "deid-allowlist",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Drops every field you did not explicitly allow, before a record leaves your machine",
   "type": "module",
   "main": "./dist/deid.js",
@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/deid.d.ts",
       "import": "./dist/deid.js"
+    },
+    "./verify": {
+      "types": "./dist/verify.d.ts",
+      "import": "./dist/verify.js"
     }
   },
   "files": [
